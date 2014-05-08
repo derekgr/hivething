@@ -1,4 +1,4 @@
-package hivething
+package main
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"git.apache.org/thrift.git/lib/go/thrift"
-	thrifthive "github.com/derekgr/hivething/TCLIService"
+	thrifthive "./TCLIService"
 )
 
 type Connection struct {
@@ -46,6 +46,7 @@ func (c *Connection) Query(query string) error {
 	// statement.Handle, from the OpenSession above, but
 	// I can't get it to work.
 	statement := thrifthive.NewTExecuteStatementReq()
+	statement.SessionHandle = resp.SessionHandle
 	statement.Statement = query
 	q, err := c.Hive.ExecuteStatement(statement)
 	if err != nil {
@@ -54,4 +55,16 @@ func (c *Connection) Query(query string) error {
 
 	log.Println(q)
 	return nil
+}
+
+func main() {
+	conn, err := Connect("127.0.0.1:10000")
+	if err != nil {
+		panic(err)
+	}
+
+	err = conn.Query("show tables")
+	if err != nil {
+		panic(err)
+	}
 }
