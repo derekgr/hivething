@@ -35,25 +35,29 @@ func Connect(host string) (*Connection, error) {
 
 // Let's just try a simple "open a connection, execute a statement test".
 func (c *Connection) Query(query string) error {
-	resp, err := c.Hive.OpenSession(thrifthive.NewTOpenSessionReq())
+	session, err := c.Hive.OpenSession(thrifthive.NewTOpenSessionReq())
 	if err != nil {
 		return fmt.Errorf("Error opening session: %v", err)
 	}
 
-	log.Println(resp)
-
-	// I think I need to set a statement handle here,
-	// statement.Handle, from the OpenSession above, but
-	// I can't get it to work.
-	statement := thrifthive.NewTExecuteStatementReq()
-	statement.SessionHandle = resp.SessionHandle
-	statement.Statement = query
-	q, err := c.Hive.ExecuteStatement(statement)
+	executeReq := thrifthive.NewTExecuteStatementReq()
+	executeReq.SessionHandle = session.SessionHandle
+	executeReq.Statement = query
+	execute, err := c.Hive.ExecuteStatement(executeReq)
 	if err != nil {
 		return fmt.Errorf("Error in ExecuteStatement: %v", err)
 	}
 
-	log.Println(q)
+	fetchReq := thrifthive.NewTFetchResultsReq()
+	fetchReq.OperationHandle = execute.OperationHandle
+	fetchReq.MaxRows = 128
+	fetch, err := c.Hive.FetchResults(fetchReq)
+	if err != nil {
+		return err
+	}
+
+	log.Println(fetch)
+
 	return nil
 }
 

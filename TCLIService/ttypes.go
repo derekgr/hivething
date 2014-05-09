@@ -4102,7 +4102,7 @@ func (p *THandleIdentifier) Write(oprot thrift.TProtocol) error {
 
 func (p *THandleIdentifier) writeField1(oprot thrift.TProtocol) (err error) {
 	if p.Guid != nil {
-		if err := oprot.WriteFieldBegin("guid", thrift.BINARY, 1); err != nil {
+		if err := oprot.WriteFieldBegin("guid", thrift.STRING, 1); err != nil {
 			return fmt.Errorf("%T write field begin error 1:guid: %s", p, err)
 		}
 		if err := oprot.WriteBinary(p.Guid); err != nil {
@@ -4117,7 +4117,7 @@ func (p *THandleIdentifier) writeField1(oprot thrift.TProtocol) (err error) {
 
 func (p *THandleIdentifier) writeField2(oprot thrift.TProtocol) (err error) {
 	if p.Secret != nil {
-		if err := oprot.WriteFieldBegin("secret", thrift.BINARY, 2); err != nil {
+		if err := oprot.WriteFieldBegin("secret", thrift.STRING, 2); err != nil {
 			return fmt.Errorf("%T write field begin error 2:secret: %s", p, err)
 		}
 		if err := oprot.WriteBinary(p.Secret); err != nil {
