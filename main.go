@@ -126,7 +126,7 @@ func (s *Stmt) Query(args []driver.Value) (driver.Rows, error) {
 	}
 
 	status := response.Status.GetStatusCode()
-	if status != tcliservice.TStatusCode_SUCCESS_STATUS || status != tcliservice.TStatusCode_SUCCESS_WITH_INFO_STATUS {
+	if status != tcliservice.TStatusCode_SUCCESS_STATUS && status != tcliservice.TStatusCode_SUCCESS_WITH_INFO_STATUS {
 		return nil, fmt.Errorf("Error from server: ", response.Status)
 	}
 
