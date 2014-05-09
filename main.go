@@ -6,11 +6,11 @@ import (
 	"log"
 
 	"git.apache.org/thrift.git/lib/go/thrift"
-	thrifthive "./TCLIService"
+	"./tcliservice"
 )
 
 type Connection struct {
-	Hive *thrifthive.TCLIServiceClient
+	Hive *tcliservice.TCLIServiceClient
 }
 
 func Connect(host string) (*Connection, error) {
@@ -28,30 +28,30 @@ func Connect(host string) (*Connection, error) {
 	}
 
 	protocol := thrift.NewTBinaryProtocolFactoryDefault()
-	client := thrifthive.NewTCLIServiceClientFactory(transport, protocol)
+	client := tcliservice.NewTCLIServiceClientFactory(transport, protocol)
 
 	return &Connection{client}, nil
 }
 
 // Let's just try a simple "open a connection, execute a statement test".
 func (c *Connection) Query(query string) error {
-	session, err := c.Hive.OpenSession(thrifthive.NewTOpenSessionReq())
+	session, err := c.Hive.OpenSession(*tcliservice.NewTOpenSessionReq())
 	if err != nil {
 		return fmt.Errorf("Error opening session: %v", err)
 	}
 
-	executeReq := thrifthive.NewTExecuteStatementReq()
-	executeReq.SessionHandle = session.SessionHandle
+	executeReq := tcliservice.NewTExecuteStatementReq()
+	executeReq.SessionHandle = *session.SessionHandle
 	executeReq.Statement = query
-	execute, err := c.Hive.ExecuteStatement(executeReq)
+	execute, err := c.Hive.ExecuteStatement(*executeReq)
 	if err != nil {
 		return fmt.Errorf("Error in ExecuteStatement: %v", err)
 	}
 
-	fetchReq := thrifthive.NewTFetchResultsReq()
-	fetchReq.OperationHandle = execute.OperationHandle
+	fetchReq := tcliservice.NewTFetchResultsReq()
+	fetchReq.OperationHandle = *execute.OperationHandle
 	fetchReq.MaxRows = 128
-	fetch, err := c.Hive.FetchResults(fetchReq)
+	fetch, err := c.Hive.FetchResults(*fetchReq)
 	if err != nil {
 		return err
 	}
