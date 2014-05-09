@@ -119,7 +119,6 @@ func (s *Stmt) Exec(args []driver.Value) (driver.Result, error) {
 }
 
 func (s *Stmt) Query(args []driver.Value) (driver.Rows, error) {
-	log.Printf("query!")
 	response, err := s.Connection.Hive.ExecuteStatement(*s.Statement)
 	if err != nil {
 		return nil, fmt.Errorf("Error in ExecuteStatement: ", response, err)
@@ -158,7 +157,7 @@ func main() {
 	}
 
 	rows, err := db.Query("show tables")
-	log.Println(rows, err)
+	log.Println("Query result: ", rows, err)
 	if err != nil {
 		panic(fmt.Errorf("Error issuing query: ", err))
 	}
