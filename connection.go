@@ -43,3 +43,12 @@ func (c *Connection) Begin() (driver.Tx, error) {
 	// No support for transactions...
 	return nil, nil
 }
+
+func (c *Connection) QueryAsync(query string, args ...driver.Value) (*Rows, error) {
+	executeReq := tcliservice.NewTExecuteStatementReq()
+	executeReq.SessionHandle = *c.session
+	executeReq.Statement = query
+
+	statement := &Statement{c.thrift, executeReq}
+	return statement.executeQuery(args)
+}

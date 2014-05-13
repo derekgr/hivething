@@ -2,6 +2,7 @@ package hivething
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"github.com/derekgr/hivething/tcliservice"
 	"io"
@@ -24,14 +25,16 @@ type Rows struct {
 type AsyncRows interface {
 	Poll() (*Status, error)
 	Wait() (*Status, error)
+	WaitAndNotify(notify chan *Status)
 }
 
 type Status struct {
 	state *tcliservice.TOperationState
+	Error error
 	At    time.Time
 }
 
-func NewRows(thrift *tcliservice.TCLIServiceClient, operation *tcliservice.TOperationHandle) *Rows {
+func newRows(thrift *tcliservice.TCLIServiceClient, operation *tcliservice.TOperationHandle) *Rows {
 	return &Rows{thrift, operation, nil, 0, nil, true, false}
 }
 
@@ -48,7 +51,7 @@ func (r *Rows) Poll() (*Status, error) {
 		return nil, fmt.Errorf("GetStatus call failed: %s", resp.Status.String())
 	}
 
-	return &Status{resp.OperationState, time.Now()}, nil
+	return &Status{resp.OperationState, nil, time.Now()}, nil
 }
 
 func (r *Rows) Wait() (*Status, error) {
@@ -84,6 +87,19 @@ func (r *Rows) Wait() (*Status, error) {
 
 		time.Sleep(5)
 	}
+}
+
+func (r *Rows) WaitAndNotify(notify chan *Status) {
+	go func() {
+		status, err := r.Wait()
+		if status != nil {
+			notify <- status
+		} else if err != nil {
+			notify <- &Status{nil, err, time.Now()}
+		} else {
+			notify <- &Status{nil, errors.New("unknown"), time.Now()}
+		}
+	}()
 }
 
 func (r *Rows) waitForSuccess() error {
@@ -152,6 +168,12 @@ func (r *Rows) Next(dest []driver.Value) error {
 	r.offset++
 
 	return nil
+}
+
+func (r *Rows) NextRow() ([]driver.Value, error) {
+	row := make([]driver.Value, len(r.Columns()))
+	err := r.Next(row)
+	return row, err
 }
 
 func convertRow(row *tcliservice.TRow, dest []driver.Value) error {

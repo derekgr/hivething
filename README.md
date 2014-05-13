@@ -11,16 +11,76 @@ import (
   "github.com/derekgr/hivething"
 )
 
-func Test() {
+func ListTables() []string {
   sql.Register("hive", hivething.NewDriver())
-  if conn, err := sql.Open("hive", "127.0.0.1:10000")
+  if db, err := sql.Open("hive", "127.0.0.1:10000")
   if err != nil {
     // handle
   }
 
+  rows, err := db.Query("SHOW TABLES")
+  if err != nil {
+      // handle
+  }
 
-  // Use database connection with Query(), etc.
+
+  tables := make([]string)
+  for rows.Next() {
+      var tableName string
+      rows.Scan(&tableName)
+      append(tables, tableName)
+  }
+
+  return tables
 }
 ```
 
-Alternatively, Hive supports asyncronous query execution, and so does this library. `hivething.HiveResultSet`, for example, exposes methods to poll for an asycronous query's status and results.
+Alternatively, Hive supports asyncronous query execution, which you can use via the `Poll()` and `Wait()` methods from a `hivething.Rows`. There's
+also `WaitAndNotify(chan hivething.Status)`, which will poll in a goroutine until the job's complete (one way or another), and then notify you on
+a notification channel.
+
+```go
+import (
+  "github.com/derekgr/hivething"
+)
+
+func ListTablesAsync() []string {
+  if db, err := hivething.DefaultDriver.OpenConnection("127.0.0.1:10000")
+  if err != nil {
+    // handle
+  }
+
+  rows, err := db.QueryAsync("SHOW TABLES")
+  if err != nil {
+      // handle
+  }
+
+  notify := make(chan *hivething.Status, 1)
+
+  // Blocks until operation complete, but you could call Poll() to get
+  // incremental status updates without waiting.
+  rows.WaitAndNotify(notify)
+
+  status := <-notify
+  tables := make([]string)
+  if status.IsSuccess() {
+      for {
+          row, err := rows.NextRow()
+          if err == io.EOF {
+              // No more data
+          }
+
+          if err != nil {
+              // handle err
+          }
+
+          append(tables, row[0].(string))
+      }
+  }
+  else {
+      // handle status.Error
+  }
+
+  return tables
+}
+```
