@@ -2,6 +2,7 @@ package hivething
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"github.com/derekgr/hivething/tcliservice"
 )
@@ -40,8 +41,7 @@ func (c *Connection) Close() error {
 }
 
 func (c *Connection) Begin() (driver.Tx, error) {
-	// No support for transactions...
-	return nil, nil
+	return nil, errors.New("hive does not support transactions")
 }
 
 func (c *Connection) QueryAsync(query string, args ...driver.Value) (*Rows, error) {
