@@ -68,6 +68,7 @@ func ListTablesAsync() []string {
           row, err := rows.NextRow()
           if err == io.EOF {
               // No more data
+              break
           }
 
           if err != nil {
