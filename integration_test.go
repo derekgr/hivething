@@ -28,17 +28,20 @@ func TestSQLInterface(t *testing.T) {
 		t.Fatalf("db.Query error: %v", err)
 	}
 
-	tables := 0
+	var ct int = 0
 	for rows.Next() {
+		if ct > 0 {
+			t.Fatal("Expected a single row to be fetched")
+		}
+
 		err = rows.Scan(&tableName)
 		if err != nil {
 			t.Fatalf("rows.Scan error: %v", err)
 		}
-		tables += 1
 	}
 
-	if tables != 1 || tableName != "foo" {
-		t.Errorf("Expected table 'foo' but found %d (last named %s)", tables, tableName)
+	if tableName != "foo" {
+		t.Errorf("Expected table 'foo' but found %s", tableName)
 	}
 
 	err = rows.Close()
@@ -74,9 +77,9 @@ func TestAsyncInterface(t *testing.T) {
 		t.Fatalf("Unsuccessful query execution: %+v", status)
 	}
 
-	tables := 0
+	var ct int = 0
 	for {
-		if tables > 1 {
+		if ct > 1 {
 			t.Fatal("Rows.NextRow should terminate after 1 fetch")
 		}
 
@@ -90,11 +93,11 @@ func TestAsyncInterface(t *testing.T) {
 		}
 
 		tableName = row[0].(string)
-		tables += 1
+		ct++
 	}
 
-	if tables != 1 || tableName != "foo" {
-		t.Errorf("Expected table 'foo' but found %d (last named %s)", tables, tableName)
+	if tableName != "foo" {
+		t.Errorf("Expected table 'foo' but found %s", tableName)
 	}
 }
 
