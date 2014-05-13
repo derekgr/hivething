@@ -17,8 +17,7 @@ func (s *Statement) Close() error {
 }
 
 func (s *Statement) NumInput() int {
-	// TODO: Parse the query for :placeholder_parameters, count them,
-	// return the total here.
+	// Should we support input parameters?
 	return 0
 }
 

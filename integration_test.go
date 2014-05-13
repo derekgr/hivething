@@ -80,10 +80,10 @@ func TestAsyncInterface(t *testing.T) {
 	var ct int = 0
 	for {
 		if ct > 1 {
-			t.Fatal("Rows.NextRow should terminate after 1 fetch")
+			t.Fatal("Rows.FetchRow should terminate after 1 fetch")
 		}
 
-		row, err := rows.NextRow()
+		row, err := rows.FetchRow()
 		if err == io.EOF {
 			break
 		}
@@ -98,6 +98,54 @@ func TestAsyncInterface(t *testing.T) {
 
 	if tableName != "foo" {
 		t.Errorf("Expected table 'foo' but found %s", tableName)
+	}
+}
+
+func TestSQLQuery(t *testing.T) {
+	var (
+		id    int
+		value string
+	)
+
+	db, err := sql.Open("hive", "127.0.0.1:10000")
+	rows, err := db.Query("select * from foo")
+	if err != nil {
+		t.Fatalf("db.Query error: %v", err)
+	}
+
+	col, err := rows.Columns()
+	t.Logf("%+v\n", col)
+	for rows.Next() {
+		rows.Scan(&id, &value)
+		t.Logf("%d\t%s", id, value)
+	}
+}
+
+func TestAsyncQuery(t *testing.T) {
+	var (
+		id    int64
+		value string
+	)
+
+	db, err := DefaultDriver.OpenConnection("127.0.0.1:10000")
+	rows, err := db.QueryAsync("select * from foo")
+	if err != nil {
+		t.Fatalf("db.Query error: %v", err)
+	}
+
+	status, err := rows.Wait()
+	if status.IsSuccess() {
+		col := rows.Columns()
+		t.Logf("%+v\n", col)
+		for {
+			row, err := rows.FetchRow()
+			if err == io.EOF {
+				break
+			}
+			id = row[0].(int64)
+			value = row[1].(string)
+			t.Logf("%d\t%s", id, value)
+		}
 	}
 }
 

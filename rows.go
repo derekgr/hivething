@@ -170,7 +170,7 @@ func (r *Rows) Next(dest []driver.Value) error {
 	return nil
 }
 
-func (r *Rows) NextRow() ([]driver.Value, error) {
+func (r *Rows) FetchRow() ([]driver.Value, error) {
 	row := make([]driver.Value, len(r.Columns()))
 	err := r.Next(row)
 	return row, err
