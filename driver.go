@@ -14,7 +14,7 @@ type Options struct {
 }
 
 var (
-	Defaults = Options{PollIntervalSeconds: 5, BatchSize: 10000}
+	DriverDefaults = Options{PollIntervalSeconds: 5, BatchSize: 10000}
 )
 
 type Driver struct {

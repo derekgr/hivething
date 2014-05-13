@@ -17,6 +17,7 @@ type Rows struct {
 	offset  int
 	rowSet  *tcliservice.TRowSet
 	hasMore bool
+	ready   bool
 }
 
 type AsyncRows interface {
@@ -30,7 +31,7 @@ type Status struct {
 }
 
 func NewRows(thrift *tcliservice.TCLIServiceClient, operation *tcliservice.TOperationHandle) *Rows {
-	return &Rows{thrift, operation, nil, 0, nil, true}
+	return &Rows{thrift, operation, nil, 0, nil, true, false}
 }
 
 func (r *Rows) Poll() (*Status, error) {
@@ -73,6 +74,8 @@ func (r *Rows) Wait() (*Status, error) {
 				}
 
 				r.columns = metadataResp.Schema.Columns
+				r.ready = true
+
 				return status, nil
 			}
 			return nil, fmt.Errorf("Query failed execution: %s", status.state.String())
@@ -87,17 +90,54 @@ func (r *Rows) Columns() []string {
 }
 
 func (r *Rows) Close() error {
-	r.operation = nil
-	r.rowSet = nil
-	r.offset = 0
-	r.hasMore = false
-	r.columns = nil
-
 	return nil
 }
 
 func (r *Rows) Next(dest []driver.Value) error {
-	return io.EOF
+	if !r.ready {
+		status, err := r.Wait()
+		if err != nil {
+			return err
+		}
+		if !status.IsSuccess() || !r.ready {
+			return fmt.Errorf("Unsuccessful query execution: %+v", status)
+		}
+	}
+
+	if r.rowSet == nil || r.offset >= len(r.rowSet.Rows) {
+		if !r.hasMore {
+			return io.EOF
+		}
+
+		fetchReq := tcliservice.NewTFetchResultsReq()
+		fetchReq.OperationHandle = *r.operation
+		fetchReq.Orientation = tcliservice.TFetchOrientation_FETCH_NEXT
+		fetchReq.MaxRows = 10000
+
+		resp, err := r.thrift.FetchResults(*fetchReq)
+		if err != nil {
+			return err
+		}
+
+		if !isSuccessStatus(resp.Status) {
+			return fmt.Errorf("FetchResults failed: %s", resp.Status.String())
+		}
+
+		r.rowSet = resp.Results
+		r.hasMore = *resp.HasMoreRows
+	}
+
+	row := r.rowSet.Rows[r.offset]
+	if err := convertRow(row, dest); err != nil {
+		return err
+	}
+	r.offset++
+
+	return nil
+}
+
+func convertRow(row *tcliservice.TRow, dest []driver.Value) error {
+	return nil
 }
 
 func (s Status) String() string {
@@ -121,68 +161,3 @@ func (s Status) IsComplete() bool {
 func (s Status) IsSuccess() bool {
 	return *s.state == tcliservice.TOperationState_FINISHED_STATE
 }
-
-/*
-func (r *hiveRows) Schema() []Column {
-	if r.schema == nil {
-		ret := make([]Column, len(r.columns))
-		for i, col := range r.columns {
-			ret[i] = Column{col}
-		}
-		return ret
-		r.schema = ret
-	}
-
-	return r.schema
-}
-
-func convertColumnValue(column *tcliservice.TColumnValue) interface{} {
-	var props = []string{"BoolVal", "StringVal", "ByteVal", "I16Val", "I32Val", "I64Val", "DoubleVal"}
-
-	value := reflect.ValueOf(*column)
-	for _, prop := range props {
-		field := value.FieldByName(prop)
-		fieldValue := field.FieldByName("Value")
-		if fieldValue.IsValid() && fieldValue.Interface() != nil {
-			log.Println(fieldValue.Interface())
-		}
-	}
-
-	return nil
-}
-
-func (r *hiveRows) Next() ([]Value, error) {
-	if r.rowSet == nil || r.offset >= len(r.rowSet.Rows) {
-		if !r.hasMore {
-			return nil, NoMoreRows
-		}
-
-		fetchReq := tcliservice.NewTFetchResultsReq()
-		fetchReq.OperationHandle = *r.operation
-		fetchReq.Orientation = tcliservice.TFetchOrientation_FETCH_NEXT
-		fetchReq.MaxRows = fetch_max_rows
-
-		resp, err := r.thriftClient.FetchResults(*fetchReq)
-		if err != nil {
-			return nil, err
-		}
-
-		if !isSuccessStatus(resp.Status) {
-			return nil, fmt.Errorf("FetchResults failed: %s", resp.Status.String())
-		}
-
-		r.rowSet = resp.Results
-		r.hasMore = *resp.HasMoreRows
-	}
-
-	row := r.rowSet.Rows[r.offset]
-	ret := make([]Value, len(row.ColVals))
-	for i, col := range row.ColVals {
-		ret[i] = convertColumnValue(col)
-	}
-
-	r.offset++
-
-	return ret, nil
-}
-*/
