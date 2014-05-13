@@ -8,24 +8,45 @@ import (
 )
 
 func TestConnection(t *testing.T) {
+	var (
+		tableName string
+	)
+
 	sql.Register("hive", NewDriver(DriverDefaults))
 	db, err := sql.Open("hive", "127.0.0.1:10000")
 	if err != nil {
-		t.Errorf("sql.Open error: %v", err)
-	}
-
-	if db == nil {
-		t.Error("sql.Open returned a nil db")
+		t.Fatalf("sql.Open error: %v", err)
 	}
 
 	rows, err := db.Query("SHOW TABLES")
 	if err != nil {
-		t.Errorf("db.Query error: %v", err)
+		t.Fatalf("db.Query error: %v", err)
 	}
 
-	if rows == nil {
-		t.Error("db.Query returned nil rows")
+	tables := 0
+	for rows.Next() {
+		err = rows.Scan(&tableName)
+		if err != nil {
+			t.Fatalf("rows.Scan error: %v", err)
+		}
+		tables += 1
 	}
 
-	t.Logf("%+v", rows)
+	if tables == 0 {
+		t.Fatal("No tables retrieved!")
+	}
+
+	if tableName != "foo" {
+		t.Errorf("Expected table 'foo' but was %s", tableName)
+	}
+
+	err = rows.Close()
+	if err != nil {
+		t.Errorf("rows.Close error: %v", err)
+	}
+
+	err = db.Close()
+	if err != nil {
+		t.Fatalf("db.Close error: %v", err)
+	}
 }
