@@ -8,7 +8,12 @@ import (
 	"testing"
 )
 
-func TestConnection(t *testing.T) {
+/*
+Used with local testing: expects hiveserver2 running on 127.0.0.1:10000,
+with a single table defined, "foo".
+*/
+
+func TestSQLInterface(t *testing.T) {
 	var (
 		tableName string
 	)
@@ -47,7 +52,7 @@ func TestConnection(t *testing.T) {
 	}
 }
 
-func TestAsync(t *testing.T) {
+func TestAsyncInterface(t *testing.T) {
 	var (
 		tableName string
 	)
