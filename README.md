@@ -1,4 +1,4 @@
-Hivething is a small Go wrapper library around the [Hiveserver2](https://cwiki.apache.org/confluence/display/Hive/Setting+Up+HiveServer2) via its [Thrift interface](https://cwiki.apache.org/confluence/display/Hive/Setting+Up+HiveServer2).
+Hivething is a small Go wrapper library around [Hiveserver2](https://cwiki.apache.org/confluence/display/Hive/Setting+Up+HiveServer2) via its [Thrift interface](https://cwiki.apache.org/confluence/display/Hive/Setting+Up+HiveServer2).
 
 ## Usage
 
