@@ -12,7 +12,7 @@ import (
 )
 
 func ListTables() []string {
-  sql.Register("hive", hivething.NewDriver())
+  sql.Register("hive", hivething.DefaultDriver)
   if db, err := sql.Open("hive", "127.0.0.1:10000")
   if err != nil {
     // handle
