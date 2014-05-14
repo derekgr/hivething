@@ -3,8 +3,7 @@
 package hivething
 
 import (
-	"database/sql"
-	"io"
+	"reflect"
 	"testing"
 )
 
@@ -13,86 +12,35 @@ Used with local testing: expects hiveserver2 running on 127.0.0.1:10000,
 with a single table defined, "foo".
 */
 
-func TestSQLInterface(t *testing.T) {
+func TestShowTables(t *testing.T) {
 	var (
+		ct        int = 0
 		tableName string
 	)
-
-	db, err := sql.Open("hive", "127.0.0.1:10000")
+	conn, err := Connect("127.0.0.1:10000", DefaultOptions)
 	if err != nil {
-		t.Fatalf("sql.Open error: %v", err)
+		t.Fatalf("Connect error %v", err)
 	}
 
-	rows, err := db.Query("SHOW TABLES")
+	rows, err := conn.Query("SHOW TABLES")
 	if err != nil {
-		t.Fatalf("db.Query error: %v", err)
+		t.Fatalf("Connection.Query error: %v", err)
 	}
 
-	var ct int = 0
+	status, err := rows.Wait()
+	if err != nil {
+		t.Fatalf("Connection.Wait error: %v", err)
+	}
+
+	if !status.IsSuccess() {
+		t.Fatalf("Unsuccessful query execution: %v", status)
+	}
+
 	for rows.Next() {
 		if ct > 0 {
-			t.Fatal("Expected a single row to be fetched")
+			t.Fatal("Rows.Next should terminate after 1 fetch")
 		}
-
-		err = rows.Scan(&tableName)
-		if err != nil {
-			t.Fatalf("rows.Scan error: %v", err)
-		}
-	}
-
-	if tableName != "foo" {
-		t.Errorf("Expected table 'foo' but found %s", tableName)
-	}
-
-	err = rows.Close()
-	if err != nil {
-		t.Errorf("rows.Close error: %v", err)
-	}
-
-	err = db.Close()
-	if err != nil {
-		t.Fatalf("db.Close error: %v", err)
-	}
-}
-
-func TestAsyncInterface(t *testing.T) {
-	var (
-		tableName string
-	)
-	conn, err := DefaultDriver.OpenConnection("127.0.0.1:10000")
-	if err != nil {
-		t.Fatalf("Driver.OpenConnection error %v", err)
-	}
-
-	rows, err := conn.QueryAsync("SHOW TABLES")
-	if err != nil {
-		t.Fatalf("Connection.QueryAsync error: %v", err)
-	}
-
-	notify := make(chan *Status, 1)
-	rows.WaitAndNotify(notify)
-
-	status := <-notify
-	if !status.IsSuccess() {
-		t.Fatalf("Unsuccessful query execution: %+v", status)
-	}
-
-	var ct int = 0
-	for {
-		if ct > 1 {
-			t.Fatal("Rows.FetchRow should terminate after 1 fetch")
-		}
-
-		row, err := rows.FetchRow()
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			t.Fatalf("Rows.NextRow error: %v", err)
-		}
-
-		tableName = row[0].(string)
+		rows.Scan(&tableName)
 		ct++
 	}
 
@@ -101,54 +49,42 @@ func TestAsyncInterface(t *testing.T) {
 	}
 }
 
-func TestSQLQuery(t *testing.T) {
+func TestQuery(t *testing.T) {
 	var (
+		ct    int = 0
 		id    int
 		value string
 	)
 
-	db, err := sql.Open("hive", "127.0.0.1:10000")
+	db, err := Connect("127.0.0.1:10000", DefaultOptions)
 	rows, err := db.Query("select * from foo")
 	if err != nil {
-		t.Fatalf("db.Query error: %v", err)
-	}
-
-	col, err := rows.Columns()
-	t.Logf("%+v\n", col)
-	for rows.Next() {
-		rows.Scan(&id, &value)
-		t.Logf("%d\t%s", id, value)
-	}
-}
-
-func TestAsyncQuery(t *testing.T) {
-	var (
-		id    int64
-		value string
-	)
-
-	db, err := DefaultDriver.OpenConnection("127.0.0.1:10000")
-	rows, err := db.QueryAsync("select * from foo")
-	if err != nil {
-		t.Fatalf("db.Query error: %v", err)
+		t.Fatalf("Connect error: %v", err)
 	}
 
 	status, err := rows.Wait()
-	if status.IsSuccess() {
-		col := rows.Columns()
-		t.Logf("%+v\n", col)
-		for {
-			row, err := rows.FetchRow()
-			if err == io.EOF {
-				break
-			}
-			id = row[0].(int64)
-			value = row[1].(string)
-			t.Logf("%d\t%s", id, value)
-		}
+	if !status.IsSuccess() {
+		t.Fatalf("Unsuccessful query execution: %v", status)
 	}
-}
 
-func init() {
-	sql.Register("hive", DefaultDriver)
+	col := rows.Columns()
+	if !reflect.DeepEqual(col, []string{"foo.id", "foo.val"}) {
+		t.Fatalf("Expected 'id' and 'value' columns, but got %v", col)
+	}
+
+	vals := make([]string, 0)
+	for rows.Next() {
+		ct++
+		rows.Scan(&id, &value)
+
+		if id != ct {
+			t.Errorf("Expected row id to be %d but was %d", ct, id)
+		}
+
+		vals = append(vals, value)
+	}
+
+	if !reflect.DeepEqual(vals, []string{"foo", "bar", "baz"}) {
+		t.Errorf("Expected 3 row values to be [foo, bar, baz] but was %v", vals)
+	}
 }
