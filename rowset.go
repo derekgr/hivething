@@ -3,6 +3,7 @@ package hivething
 import (
 	"errors"
 	"fmt"
+	"git.apache.org/thrift.git/lib/go/thrift"
 	"github.com/derekgr/hivething/tcliservice"
 	"log"
 	"time"
@@ -29,7 +30,7 @@ type rowSet struct {
 // have a valid thrift client, and the serialized Handle()
 // from the prior operation.
 type RowSet interface {
-	Handle() []byte
+	Handle() ([]byte, error)
 	Columns() []string
 	Next() bool
 	Scan(dest ...interface{}) error
@@ -51,13 +52,13 @@ func newRowSet(thrift *tcliservice.TCLIServiceClient, operation *tcliservice.TOp
 
 // Construct a RowSet for a previously submitted operation, using the prior operation's Handle()
 // and a valid thrift client to a hive service that is aware of the operation.
-func Reattach(thrift *tcliservice.TCLIServiceClient, handle []byte, options Options) (RowSet, error) {
+func Reattach(conn *Connection, handle []byte) (RowSet, error) {
 	operation, err := deserializeOp(handle)
 	if err != nil {
 		return nil, err
 	}
 
-	return newRowSet(thrift, operation, options), nil
+	return newRowSet(conn.thrift, operation, conn.options), nil
 }
 
 // Issue a thrift call to check for the job's current status.
@@ -249,7 +250,7 @@ func (r *rowSet) Columns() []string {
 // Return a serialized representation of an identifier that can later
 // be used to reattach to a running operation. This identifier and
 // serialized representation should be considered opaque by users.
-func (r *rowSet) Handle() []byte {
+func (r *rowSet) Handle() ([]byte, error) {
 	return serializeOp(r.operation)
 }
 
@@ -316,9 +317,17 @@ func (s Status) IsSuccess() bool {
 }
 
 func deserializeOp(handle []byte) (*tcliservice.TOperationHandle, error) {
-	return nil, nil
+	ser := thrift.NewTDeserializer()
+	var val tcliservice.TOperationHandle
+
+	if err := ser.Read(&val, handle); err != nil {
+		return nil, err
+	}
+
+	return &val, nil
 }
 
-func serializeOp(operation *tcliservice.TOperationHandle) []byte {
-	return nil
+func serializeOp(operation *tcliservice.TOperationHandle) ([]byte, error) {
+	ser := thrift.NewTSerializer()
+	return ser.Write(operation)
 }
