@@ -199,7 +199,12 @@ func (r *rowSet) Scan(dest ...interface{}) error {
 		d := dest[i]
 		switch dt := d.(type) {
 		case *string:
-			*dt = val.(string)
+			switch st := val.(type) {
+			case string:
+				*dt = st
+			default:
+				*dt = fmt.Sprintf("%v", val)
+			}
 		case *[]byte:
 			*dt = []byte(val.(string))
 		case *int:
