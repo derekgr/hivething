@@ -3,10 +3,11 @@ package hivething
 import (
 	"errors"
 	"fmt"
-	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/derekgr/hivething/tcliservice"
 	"log"
 	"time"
+
+	"git.apache.org/thrift.git/lib/go/thrift"
+	"github.com/derekgr/hivething/tcliservice"
 )
 
 type rowSet struct {
@@ -73,6 +74,10 @@ func (r *rowSet) Poll() (*Status, error) {
 
 	if !isSuccessStatus(resp.Status) {
 		return nil, fmt.Errorf("GetStatus call failed: %s", resp.Status.String())
+	}
+
+	if resp.OperationState == nil {
+		return nil, errors.New("No error from GetStatus, but nil status!")
 	}
 
 	return &Status{resp.OperationState, nil, time.Now()}, nil
@@ -301,6 +306,10 @@ func (s Status) String() string {
 
 // Returns true if the job has completed or failed.
 func (s Status) IsComplete() bool {
+	if s.state == nil {
+		return false
+	}
+
 	switch *s.state {
 	case tcliservice.TOperationState_FINISHED_STATE,
 		tcliservice.TOperationState_CANCELED_STATE,
@@ -308,11 +317,16 @@ func (s Status) IsComplete() bool {
 		tcliservice.TOperationState_ERROR_STATE:
 		return true
 	}
+
 	return false
 }
 
 // Returns true if the job compelted successfully.
 func (s Status) IsSuccess() bool {
+	if s.state == nil {
+		return false
+	}
+
 	return *s.state == tcliservice.TOperationState_FINISHED_STATE
 }
 
