@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/derekgr/hivething/tcliservice"
+	"github.com/derekgr/hivething/TCLIService"
 )
 
 type rowSet struct {
